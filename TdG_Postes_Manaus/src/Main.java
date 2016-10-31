@@ -3,81 +3,92 @@ import  java.util.Scanner;
 class Main
 {
     private static Scanner entrada = new Scanner(System.in);
+    
     public static void main(String[] args)
     {
-        String dicionario, codigo;
-        ArrayList<No> Nos = new ArrayList<>();
-        dicionario = entrada.nextLine();
-        char letra;
-        int quantidade;
-        //System.out.println(dicionario);
-        dicionario = dicionario.replace("{", " ");   //remove abertura de chaves
-        dicionario = dicionario.replace("}", "");   //remove fechamento de chaves
-        //System.out.println(dicionario);
-        String[] values = dicionario.split(",");    //divide o dicionario por virgulas
-        for (String value : values) //para cada letra e sua quantidade
+        int ordem, i, j;
+        Grafo g;
+        // leitura da ordem-1 da matriz
+        ordem = entrada.nextInt();
+        g = new Grafo(ordem);
+        // leitura da matriz de adjacencias
+        for(i = 1 ; i <= ordem ; i++)
         {
-            letra = value.charAt(2);
-            quantidade = Integer.valueOf(value.substring(6));
-            No no = new No(letra, quantidade);  //cria um novo no
-            //System.out.println("<--" + letra + "," + quantidade + "-->");
-            Nos.add(no);    //inserindo o no na lista de nos
-        }
-        //Nos.sort((No o1, No o2) -> (o1.quantidade > o2.quantidade)? 1 : 0); //ordenando as letras de modo decrescente
-        FilaPrioridadeMinima fila = new FilaPrioridadeMinima(Nos.size());   //criacao da fila de prioridade 
-        for(No no : Nos)
-        {
-            //System.out.println("inseriu o " + no.letra);
-            fila.Inserir(no);   //inserindo o no
-            //System.out.println("menor:"+fila.getMinimo());
-        }
-        while(fila.getQuantidade() > 1) //enquanto a fila nao tiver so 1 no
-        {
-            No no1 = fila.ExtrairMinimo();  //retira o primeiro menor
-            No no2 = fila.ExtrairMinimo();  //retira o segundo menor
-            No newNo = new No('*', no1.quantidade+no2.quantidade);  //cria um novo no com a soma dos 2 menores
-            newNo.esq = no1;    //adiciona o primeiro menor como filho a equerda
-            newNo.dir = no2;    //adiciona o segundo menor como filho a direita
-            //System.out.println("menor 1:" + no1.toString());
-            //System.out.println("menor 2:" + no2.toString());
-            fila.Inserir(newNo);    //insere o novo no na fila
-            //System.out.println("inseriu" + newNo.toString());
-        }
-        //return;
-        codigo = entrada.nextLine();
-        //System.out.println("codigo: " + codigo);
-        int i = 0;
-        No raiz, buscador;
-        raiz = fila.ExtrairMinimo();    //extrai o no raiz da arvore 
-        buscador = raiz;
-        /*
-        System.out.println("{arvore:");
-        System.out.println(buscador.toString());
-        System.out.println(buscador.esq.toString());
-        System.out.println(buscador.dir.toString());
-        System.out.println(buscador.dir.esq.toString());
-        System.out.println(buscador.dir.dir.toString());
-        System.out.println("}");
-        //*/
-        while(i < codigo.length())
-        {
-            //System.out.println("codigo: " +codigo.charAt(i));
-            if(codigo.charAt(i) == '1')
+            for(j = 1 ; j <= ordem ; j++)
             {
-                buscador = buscador.esq;
+                g.AddAresta(i, j, entrada.nextInt());
             }
-            else
+        }
+        System.out.println(g.MinimumSpanningTree());
+        //g.MinimumSpanninTree();
+    }
+    
+    private static class Grafo
+    {
+        private int adj[][];
+        private int vertices = 0;
+        private int custo[];
+        private int anterior[];
+
+        public Grafo(int quantidade)
+        {
+            vertices = quantidade;
+            quantidade++;
+            adj = new int [quantidade][quantidade];
+            custo = new int[quantidade];
+            anterior = new int [quantidade];
+        }
+        public int getAresta(int origem, int destino)
+        {
+            return adj[origem][destino];    //vertice de para
+        }
+        public void AddAresta(int linha, int coluna, int value)
+        {
+            adj[linha][coluna] = value; //valor de para
+        }
+        public int MinimumSpanningTree()
+        {
+            int v, peso, u, custoTotal = 0;
+            FilaPrioridadeMinima Q = new FilaPrioridadeMinima(vertices);    //inicializando a fila
+            ArrayList<No> F = new ArrayList<>();
+            for(v = 1 ; v <= vertices ; v++)    //inicializando os custos e os caminhos
             {
-                buscador = buscador.dir;
+                No no = new No(v);  //criando um no
+                custo[v] = Integer.MAX_VALUE;   //adicionando custo 'infinito'
+                anterior[v] = -1;   //marcando flag vazia
+                Q.Inserir(no);  //adicionando na fila
             }
-            i++;
-            if(buscador.letra != '*')   //se for uma letra
+            while(Q.tamanho > 0)    //enquanto a fila nao estiver vazia
             {
-                System.out.print(buscador.letra);
-                buscador = raiz;
+                No vertice = Q.ExtrairMinimo(); //vertice de menor custo
+                u = vertice.verticeID;
+                for(v = 1 ; v <= vertices ; v++)   //para cada vertice do grafo
+                {
+                    peso = getAresta(u, v);
+                    if(peso > 0) // se tem adjacencia
+                    {
+                        if(Q.acharNo(v))    //se v esta na fila
+                        {
+                            if(peso < custo[v]) // se o custo de v for menor que o anterior
+                            {
+                                anterior[v] = u;
+                                custo[v] = peso;
+                            }
+                        }
+                    }
+                }
             }
+            for(v = 1 ; v <= vertices ; v++)
+            {
+                if(custo[v] != Integer.MAX_VALUE)
+                {
+                    custoTotal += custo[v];
+                }
+            }
+            return custoTotal;
         }
     }
+    
     private static class FilaPrioridadeMinima
     {
         private No[] nos; 
@@ -87,10 +98,23 @@ class Main
             tamanho = 0;
             nos = new No[quantidade+1];
         }
+        
+        public boolean acharNo(int ID)
+        {
+            for(int i = 1 ; i <= tamanho ; i++)
+            {
+                if(nos[i].verticeID == ID)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
         public int getQuantidade()
         {
             return this.tamanho;
         }
+        
         public No getMinimo()
         {
             return nos[1];
@@ -107,14 +131,14 @@ class Main
                 minimo = i;
                 if(Esq(i) <= tamanho)   //se nao passar o tamanho do heap
                 {
-                    if(nos[Esq(i)].quantidade < nos[minimo].quantidade)
+                    if(nos[Esq(i)].verticeID < nos[minimo].verticeID)
                     {
                         minimo = Esq(i);
                     }
                 }     
                 if(Dir(i) <= tamanho)
                 {
-                    if(nos[Dir(i)].quantidade < nos[minimo].quantidade)
+                    if(nos[Dir(i)].verticeID < nos[minimo].verticeID)
                     {
                         minimo = Dir(i);
                     }
@@ -144,7 +168,7 @@ class Main
                 
                 //aux.letra = nos[Pai(tamanho)].letra;
                 //aux.quantidade = nos[Pai(tamanho)].quantidade;
-                while(nos[Pai(i)].quantidade > nos[i].quantidade) 
+                while(nos[Pai(i)].verticeID > nos[i].verticeID) 
                 {
                     //nos[Pai(tamanho)].letra = nos[i].letra;
                     //nos[Pai(tamanho)].quantidade = nos[i].quantidade;
@@ -177,68 +201,14 @@ class Main
             //return i << 1 | 1;
         }
     }
+
     private static class No
     {
-        private char letra;
-        private int quantidade;
-        private No esq, dir;
+        private int verticeID;  //numero do vertice
         
-        @Override
-        public String toString()
+        public No(int ID)
         {
-            String ret = "[letra:"+letra + ", quantidade:" + quantidade + ", esq:" ;
-            
-            if(esq != null)
-                ret += esq.toString();
-            else
-                ret += "null";
-            
-            ret+= ", dir:";
-            if(dir != null)
-                ret += dir.toString();
-            else
-                ret += "null";
-            
-            ret += "]";
-            return ret;
-        }
-        public No getCopia()
-        {
-            No no = new No(letra, quantidade);
-            
-            if(this.dir != null) 
-            {
-                no.dir = this.esq.getCopia();
-            }
-            if(this.esq != null) 
-            {
-                no.esq = this.esq.getCopia();
-            }
-            return no;
-        }
-        public void inserirEsq(No noEsq)
-        {
-            this.esq = noEsq;
-        }
-        public void inserirDir(No noDir)
-        {
-            this.dir = noDir;
-        }
-        public No()
-        {
-            iniciarFilhos();
-        }
-        public No(char letra, int quantidade)
-        {
-            this.letra = letra;
-            this.quantidade = quantidade;
-            iniciarFilhos();
-        }
-        private void iniciarFilhos()
-        {
-            esq = null;
-            dir = null;
+            this.verticeID = ID;
         }
     }
 }
- 
