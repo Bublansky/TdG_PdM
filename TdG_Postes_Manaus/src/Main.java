@@ -1,4 +1,6 @@
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 import  java.util.Scanner;
 class Main
 {
@@ -29,7 +31,6 @@ class Main
         private int vertices = 0;
         private int custo[];
         private int anterior[];
-
         public Grafo(int quantidade)
         {
             vertices = quantidade;
@@ -50,18 +51,19 @@ class Main
         {
             int v, peso, u, custoTotal = 0;
             FilaPrioridadeMinima Q = new FilaPrioridadeMinima(vertices);    //inicializando a fila
-            ArrayList<No> F = new ArrayList<>();
             for(v = 1 ; v <= vertices ; v++)    //inicializando os custos e os caminhos
             {
                 No no = new No(v);  //criando um no
                 custo[v] = Integer.MAX_VALUE;   //adicionando custo 'infinito'
                 anterior[v] = -1;   //marcando flag vazia
+                no.setCusto(Integer.MAX_VALUE);
                 Q.Inserir(no);  //adicionando na fila
             }
             while(Q.tamanho > 0)    //enquanto a fila nao estiver vazia
             {
                 No vertice = Q.ExtrairMinimo(); //vertice de menor custo
                 u = vertice.verticeID;
+                //System.out.println("extraiu "+u);
                 for(v = 1 ; v <= vertices ; v++)   //para cada vertice do grafo
                 {
                     peso = getAresta(u, v);
@@ -71,8 +73,9 @@ class Main
                         {
                             if(peso < custo[v]) // se o custo de v for menor que o anterior
                             {
-                                anterior[v] = u;
+                                //anterior[v] = u;
                                 custo[v] = peso;
+                                Q.increasePriority(v, peso);
                             }
                         }
                     }
@@ -91,19 +94,82 @@ class Main
     
     private static class FilaPrioridadeMinima
     {
-        private No[] nos; 
+        private No[] fila; 
         private int tamanho;
         public FilaPrioridadeMinima(int quantidade)
         {
             tamanho = 0;
-            nos = new No[quantidade+1];
+            fila = new No[quantidade+1];
         }
-        
+        private boolean decreaseKey(int i, int key)
+        {
+            if(key > fila[i].getCusto())
+            {
+                return false;
+            }
+            fila[i].setCusto(key);
+            while(i > 1 && fila[Pai(i)].getCusto() > fila[i].getCusto())
+            {
+                No aux = fila[i];
+                fila[i] = fila[Pai(i)];
+                fila[Pai(i)] = aux;
+                i = Pai(i);
+            }
+            return true;
+        }
+        public void increasePriority(int value, int key)
+        {
+            for(int i = 1 ; i <= tamanho ; i++)
+            {
+                if(value == fila[i].getVerticeID())
+                {
+                    if(key > fila[i].getCusto())
+                    {
+                        return;
+                    }
+                    fila[i].setCusto(key);
+                    while(i > 1 && fila[Pai(i)].getCusto() > fila[i].getCusto())
+                    {
+                        No aux = fila[i];
+                        fila[i] = fila[Pai(i)];
+                        fila[Pai(i)] = aux;
+                        i = Pai(i);
+                    }
+                    return;
+                }
+            }
+        }
+        private void minHeapify(int i)
+        {
+            int l, r, smallest;
+            No aux;
+            l = Esq(i);
+            r = Dir(i);
+            if(l <= tamanho && fila[i].getCusto() > fila[l].getCusto())
+            {
+                smallest = l;
+            }
+            else
+            {
+                smallest = i;
+            }
+            if(r <= tamanho && fila[r].getCusto() < fila[smallest].getCusto())
+            {
+                smallest = r;
+            }
+            if(smallest != i)
+            {
+                aux = fila[i];
+                fila[i] = fila[smallest];
+                fila[smallest] = aux;
+                minHeapify(smallest);
+            }
+        }
         public boolean acharNo(int ID)
         {
             for(int i = 1 ; i <= tamanho ; i++)
             {
-                if(nos[i].verticeID == ID)
+                if(fila[i].verticeID == ID)
                 {
                     return true;
                 }
@@ -117,98 +183,61 @@ class Main
         
         public No getMinimo()
         {
-            return nos[1];
+            return fila[1];
         }
         public No ExtrairMinimo()
         {
-            No menor = nos[1];
-            nos[1] = nos[tamanho];  //substitui a raiz pelo ultimo elemento
-            int i = 1, minimo = 0;
-            tamanho--;
-            
-            while(true)
+            if(tamanho < 1)
             {
-                minimo = i;
-                if(Esq(i) <= tamanho)   //se nao passar o tamanho do heap
-                {
-                    if(nos[Esq(i)].verticeID < nos[minimo].verticeID)
-                    {
-                        minimo = Esq(i);
-                    }
-                }     
-                if(Dir(i) <= tamanho)
-                {
-                    if(nos[Dir(i)].verticeID < nos[minimo].verticeID)
-                    {
-                        minimo = Dir(i);
-                    }
-                }
-                if(minimo != i)
-                {
-                    No aux = nos[minimo];
-                    nos[minimo] = nos[i];   //troca o menor filho pelo pai
-                    nos[i] = aux;   //troca o pai pelo filho da esquerda
-                    i = minimo;
-                }
-                else
-                {
-                    break;
-                }
+                return null;
             }
-            return menor;
+            No min = fila[1];
+            fila[1] = fila[tamanho];
+            tamanho--;
+            minHeapify(1);
+            return min;
         }
         public void Inserir(No no)
         {
             tamanho++;
-            nos[tamanho] = no;   //adiciona o no no fim do heap
-            
-            if(tamanho > 1)    //se nao for o no raiz
-            {
-                int i = tamanho;
-                
-                //aux.letra = nos[Pai(tamanho)].letra;
-                //aux.quantidade = nos[Pai(tamanho)].quantidade;
-                while(nos[Pai(i)].verticeID > nos[i].verticeID) 
-                {
-                    //nos[Pai(tamanho)].letra = nos[i].letra;
-                    //nos[Pai(tamanho)].quantidade = nos[i].quantidade;
-                    No aux = nos[Pai(i)];
-                    nos[Pai(i)] = nos[i];
-                    nos[i] = aux;
-                    i = Pai(i);
-                    if(i < 2)
-                    {
-                        break;
-                    }
-                }
-            }
+            fila[tamanho] = no;
+            decreaseKey(tamanho, no.getCusto());
+            minHeapify(tamanho);
         }
-        
-       
+
         private int Pai(int i)
         {
             return Math.floorDiv(i, 2);
-            //return i >> 1;
         }
         private int Esq(int i)
         {
             return i * 2;
-            //return i << 1;
         }
         private int Dir(int i)
         {
             return i * 2 + 1;
-            //return i << 1 | 1;
         }
     }
 
     private static class No
     {
         private int verticeID;  //numero do vertice
-        
+        private int custo;
         public No(int ID)
         {
             this.verticeID = ID;
+        }
+        public int getVerticeID()
+        {
+            return verticeID;
+        }
+        public int getCusto()
+        {
+            return this.custo;
+        }
+        public void setCusto(int value)
+        {
+            this.custo = value;
         }
     }
 }
